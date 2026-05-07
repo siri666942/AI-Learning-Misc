@@ -1,0 +1,9 @@
+__pycache__
+
+*.env*
+dataset
+# Large data files
+prac/store-sales/data/*.csv
+prac/store-sales/data/*.zip
+prac/store-sales/data/*.tar.gz
+
