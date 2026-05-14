@@ -24,12 +24,9 @@ $baseUrl = $baseUrl -replace '/chat/completions$', ''
 $endpoint = "$baseUrl/chat/completions"
 
 # 2. 验证模型是否可用
-$headers = @{
-    "Content-Type"  = "application/json"
-    "Authorization" = "Bearer $apiKey"
-}
 try {
-    $modelsResp = Invoke-RestMethod -Uri "$baseUrl/models" -Method Get -Headers $headers -TimeoutSec 15
+    $modelsJson = curl.exe -s --max-time 15 "$baseUrl/models" -H "Authorization: Bearer $apiKey" 2>$null
+    $modelsResp = $modelsJson | ConvertFrom-Json
     $availableModels = $modelsResp.data | ForEach-Object { $_.id }
     if ($model -notin $availableModels) {
         Write-Warning "模型 '$model' 不可用。"
@@ -79,27 +76,30 @@ $diff
 $diffDetail
 "@
 
-# 4. 调用大模型
+# 4. 调用大模型 (用 curl 避免 PowerShell Invoke-RestMethod 连接问题)
 $body = @{
-    model    = $model
-    messages = @(
-        @{ role = "user"; content = $prompt }
-    )
+    model       = $model
+    messages    = @(@{ role = "user"; content = $prompt })
     temperature = 0.3
 } | ConvertTo-Json -Depth 5
 
-$headers = @{
-    "Content-Type"  = "application/json"
-    "Authorization" = "Bearer $apiKey"
-}
+# curl 需要文件传 body，避免命令行转义问题
+$tmpFile = [System.IO.Path]::GetTempFileName()
+$body | Out-File -FilePath $tmpFile -Encoding utf8
 
 Write-Host "正在生成 commit message..."
 try {
-    $response = Invoke-RestMethod -Uri $endpoint -Method Post -Headers $headers -Body $body -TimeoutSec 30
+    $respJson = curl.exe -s --max-time 30 -X POST "$endpoint" `
+        -H "Content-Type: application/json" `
+        -H "Authorization: Bearer $apiKey" `
+        -d "@$tmpFile" 2>$null
+    $response = $respJson | ConvertFrom-Json
     $commitMsg = $response.choices[0].message.content.Trim()
 } catch {
     Write-Warning "大模型调用失败，使用默认消息: $_"
     $commitMsg = "add"
+} finally {
+    Remove-Item -Path $tmpFile -ErrorAction SilentlyContinue
 }
 
 Write-Host "生成的 commit message: $commitMsg"

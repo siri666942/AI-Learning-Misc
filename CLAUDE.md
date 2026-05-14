@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **调用工具，不要瞎猜。** Always Read a file before answering questions about its contents. Never rely on prior conversation context — the user may have edited the file since your last interaction. Reading a file is cheap; guessing wrong wastes the user's time and erodes trust.
 
+任何值得持久记忆可以复用的经验都要主动记下来；
+
+写完
+
 ## What This Repository Is
 
 A personal deep learning study portfolio by Siri. It is **not** a software application — there is no build system, no package manager, no test suite, no CI/CD. The primary artifacts are Jupyter notebooks and Python scripts organized by learning resource.
