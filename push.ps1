@@ -76,19 +76,24 @@ $diff
 $diffDetail
 "@
 
-# 4. 调用大模型 (用 curl stdin 管道传 body)
+# 4. 调用大模型 (用临时文件传 body 给 curl)
 $body = @{
     model       = $model
     messages    = @(@{ role = "user"; content = $prompt })
     temperature = 0.3
 } | ConvertTo-Json -Depth 5
 
+$tmpFile = Join-Path $PSScriptRoot ".push_body_tmp.json"
+[System.IO.File]::WriteAllText($tmpFile, $body)
+
 Write-Host "正在生成 commit message..."
 try {
-    $respJson = $body | curl.exe -s --max-time 30 -X POST "$endpoint" `
+    $tmpFileUrl = $tmpFile -replace '\\', '/'
+    $respJson = curl.exe -s --max-time 30 -X POST "$endpoint" `
         -H "Content-Type: application/json" `
         -H "Authorization: Bearer $apiKey" `
-        --data-binary "@-" 2>$null
+        --data-binary "@$tmpFileUrl" 2>$null
+    Remove-Item -Path $tmpFile -ErrorAction SilentlyContinue
     if ([string]::IsNullOrWhiteSpace($respJson)) {
         throw "curl 返回空响应"
     }
