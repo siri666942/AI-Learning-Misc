@@ -19,7 +19,6 @@ $apiKey  = $env:api_key
 $baseUrl = $env:base_url
 $model   = $env:base_model
 
-# 如果 base_url 以 /chat/completions 结尾，去掉后缀，保留纯 base
 $baseUrl = $baseUrl -replace '/chat/completions$', ''
 $endpoint = "$baseUrl/chat/completions"
 
@@ -46,19 +45,16 @@ try {
     Write-Warning "无法验证模型，将直接尝试调用: $_"
 }
 
-# 3. 收集 git 信息
+# 3. 收集 git 信息并提交
 git add .
 
 $diff = git diff --cached --stat
-if ([string]::IsNullOrWhiteSpace($diff)) {
-    Write-Host "没有新的更改需要提交。"
-} else {
+if (-not [string]::IsNullOrWhiteSpace($diff)) {
     $diffDetail = git diff --cached --no-color 2>$null
     if ($diffDetail.Length -gt 4000) {
         $diffDetail = $diffDetail.Substring(0, 4000) + "`n... (diff truncated)"
     }
 
-    # 3. 构造 prompt
     $prompt = @"
 你是一个 git commit message 生成器。根据以下信息生成一条简洁的中文 commit message。
 
@@ -74,24 +70,21 @@ $diff
 $diffDetail
 "@
 
-    # 4. 调用大模型 (用临时文件传 body 给 curl)
+    # 调用大模型
     $body = @{
         model       = $model
         messages    = @(@{ role = "user"; content = $prompt })
         temperature = 0.3
     } | ConvertTo-Json -Depth 5
 
-    $tmpFile = Join-Path $PSScriptRoot ".push_body_tmp.json"
-    [System.IO.File]::WriteAllText($tmpFile, $body)
-
-    Write-Host "正在生成 commit message..."
+    $tmpFile = Join-Path ([System.IO.Path]::GetTempPath()) "push_body.json"
     try {
-        $tmpFileUrl = $tmpFile -replace '\\', '/'
+        [System.IO.File]::WriteAllText($tmpFile, $body)
+        Write-Host "正在生成 commit message..."
         $respJson = curl.exe -s --max-time 30 -X POST "$endpoint" `
             -H "Content-Type: application/json" `
             -H "Authorization: Bearer $apiKey" `
-            --data-binary "@$tmpFileUrl" 2>$null
-        Remove-Item -Path $tmpFile -ErrorAction SilentlyContinue
+            --data-binary "@$tmpFile" 2>$null
         if ([string]::IsNullOrWhiteSpace($respJson)) {
             throw "curl 返回空响应"
         }
@@ -100,12 +93,30 @@ $diffDetail
     } catch {
         Write-Warning "大模型调用失败，使用默认消息: $_"
         $commitMsg = "add"
+    } finally {
+        Remove-Item -Path $tmpFile -ErrorAction SilentlyContinue
     }
 
     Write-Host "生成的 commit message: $commitMsg"
     Write-Host ""
     git commit -m $commitMsg
+} else {
+    Write-Host "没有新的更改需要提交。"
 }
 
-# 5. 推送 (无论是否有新 commit，都推一次，防止上次 commit 没推上去)
-git push origin main
+# 4. 推送 (带重试)
+$maxRetry = 3
+for ($i = 1; $i -le $maxRetry; $i++) {
+    Write-Host "推送中... (尝试 $i/$maxRetry)"
+    git push origin main 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "推送成功!" -ForegroundColor Green
+        break
+    }
+    if ($i -lt $maxRetry) {
+        Write-Host "推送失败，${i}秒后重试..." -ForegroundColor Yellow
+        Start-Sleep -Seconds $i
+    } else {
+        Write-Error "推送失败，已重试 $maxRetry 次。请检查网络后手动执行: git push origin main"
+    }
+}
