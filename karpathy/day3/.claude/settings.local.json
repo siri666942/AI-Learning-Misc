@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "Bash(curl *)",
+      "Bash(powershell -ExecutionPolicy Bypass -File ./push.ps1)"
     ]
   }
 }

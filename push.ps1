@@ -1,5 +1,8 @@
 # push.ps1 — 智能提交：调用大模型自动生成 commit message
 
+# 0. 强制 TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 # 1. 读取 .env
 $envFile = Join-Path $PSScriptRoot ".env"
 if (-not (Test-Path $envFile)) {
@@ -8,7 +11,8 @@ if (-not (Test-Path $envFile)) {
 }
 Get-Content $envFile | ForEach-Object {
     if ($_ -match '^\s*([^#][^=]+?)\s*=\s*(.+?)\s*$') {
-        [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], "Process")
+        $val = $Matches[2].Trim('"').Trim("'")
+        [Environment]::SetEnvironmentVariable($Matches[1], $val, "Process")
     }
 }
 $apiKey  = $env:api_key
@@ -19,7 +23,33 @@ $model   = $env:base_model
 $baseUrl = $baseUrl -replace '/chat/completions$', ''
 $endpoint = "$baseUrl/chat/completions"
 
-# 2. 收集 git 信息
+# 2. 验证模型是否可用
+$headers = @{
+    "Content-Type"  = "application/json"
+    "Authorization" = "Bearer $apiKey"
+}
+try {
+    $modelsResp = Invoke-RestMethod -Uri "$baseUrl/models" -Method Get -Headers $headers -TimeoutSec 15
+    $availableModels = $modelsResp.data | ForEach-Object { $_.id }
+    if ($model -notin $availableModels) {
+        Write-Warning "模型 '$model' 不可用。"
+        $chatModels = $availableModels | Where-Object { $_ -match 'step|flash|mini|large|chat' } | Sort-Object
+        Write-Host "可选模型:" -ForegroundColor Cyan
+        for ($i = 0; $i -lt $chatModels.Count; $i++) {
+            Write-Host "  [$($i+1)] $($chatModels[$i])"
+        }
+        $choice = Read-Host "请选择模型编号 (直接回车用第1个)"
+        if ([string]::IsNullOrWhiteSpace($choice)) { $choice = 1 }
+        $model = $chatModels[[int]$choice - 1]
+        Write-Host "已切换到: $model" -ForegroundColor Green
+    } else {
+        Write-Host "模型验证通过: $model" -ForegroundColor Green
+    }
+} catch {
+    Write-Warning "无法验证模型，将直接尝试调用: $_"
+}
+
+# 3. 收集 git 信息
 git add .
 
 $diff = git diff --cached --stat
