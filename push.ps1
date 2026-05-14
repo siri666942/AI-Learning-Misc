@@ -51,17 +51,15 @@ git add .
 
 $diff = git diff --cached --stat
 if ([string]::IsNullOrWhiteSpace($diff)) {
-    Write-Host "没有需要提交的更改。"
-    exit 0
-}
+    Write-Host "没有新的更改需要提交。"
+} else {
+    $diffDetail = git diff --cached --no-color 2>$null
+    if ($diffDetail.Length -gt 4000) {
+        $diffDetail = $diffDetail.Substring(0, 4000) + "`n... (diff truncated)"
+    }
 
-$diffDetail = git diff --cached --no-color 2>$null
-if ($diffDetail.Length -gt 4000) {
-    $diffDetail = $diffDetail.Substring(0, 4000) + "`n... (diff truncated)"
-}
-
-# 3. 构造 prompt
-$prompt = @"
+    # 3. 构造 prompt
+    $prompt = @"
 你是一个 git commit message 生成器。根据以下信息生成一条简洁的中文 commit message。
 
 规则:
@@ -76,37 +74,38 @@ $diff
 $diffDetail
 "@
 
-# 4. 调用大模型 (用临时文件传 body 给 curl)
-$body = @{
-    model       = $model
-    messages    = @(@{ role = "user"; content = $prompt })
-    temperature = 0.3
-} | ConvertTo-Json -Depth 5
+    # 4. 调用大模型 (用临时文件传 body 给 curl)
+    $body = @{
+        model       = $model
+        messages    = @(@{ role = "user"; content = $prompt })
+        temperature = 0.3
+    } | ConvertTo-Json -Depth 5
 
-$tmpFile = Join-Path $PSScriptRoot ".push_body_tmp.json"
-[System.IO.File]::WriteAllText($tmpFile, $body)
+    $tmpFile = Join-Path $PSScriptRoot ".push_body_tmp.json"
+    [System.IO.File]::WriteAllText($tmpFile, $body)
 
-Write-Host "正在生成 commit message..."
-try {
-    $tmpFileUrl = $tmpFile -replace '\\', '/'
-    $respJson = curl.exe -s --max-time 30 -X POST "$endpoint" `
-        -H "Content-Type: application/json" `
-        -H "Authorization: Bearer $apiKey" `
-        --data-binary "@$tmpFileUrl" 2>$null
-    Remove-Item -Path $tmpFile -ErrorAction SilentlyContinue
-    if ([string]::IsNullOrWhiteSpace($respJson)) {
-        throw "curl 返回空响应"
+    Write-Host "正在生成 commit message..."
+    try {
+        $tmpFileUrl = $tmpFile -replace '\\', '/'
+        $respJson = curl.exe -s --max-time 30 -X POST "$endpoint" `
+            -H "Content-Type: application/json" `
+            -H "Authorization: Bearer $apiKey" `
+            --data-binary "@$tmpFileUrl" 2>$null
+        Remove-Item -Path $tmpFile -ErrorAction SilentlyContinue
+        if ([string]::IsNullOrWhiteSpace($respJson)) {
+            throw "curl 返回空响应"
+        }
+        $response = $respJson | ConvertFrom-Json
+        $commitMsg = $response.choices[0].message.content.Trim()
+    } catch {
+        Write-Warning "大模型调用失败，使用默认消息: $_"
+        $commitMsg = "add"
     }
-    $response = $respJson | ConvertFrom-Json
-    $commitMsg = $response.choices[0].message.content.Trim()
-} catch {
-    Write-Warning "大模型调用失败，使用默认消息: $_"
-    $commitMsg = "add"
+
+    Write-Host "生成的 commit message: $commitMsg"
+    Write-Host ""
+    git commit -m $commitMsg
 }
 
-Write-Host "生成的 commit message: $commitMsg"
-Write-Host ""
-
-# 5. 提交并推送
-git commit -m $commitMsg
+# 5. 推送 (无论是否有新 commit，都推一次，防止上次 commit 没推上去)
 git push origin main
