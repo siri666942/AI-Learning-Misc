@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 任何值得持久记忆可以复用的经验都要主动记下来；
 
-写完
+做完任何任务自动测试，测试失败自动修改，自动查找资料和思考，再测试，如此测试-修改循环，直到没有任何问题；
 
 ## What This Repository Is
 
