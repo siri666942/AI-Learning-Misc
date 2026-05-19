@@ -19,7 +19,7 @@ youtube video,侧重从头推导神经网络等,口碑极佳,喜欢去黑箱化,
 
 核心开源贡献!!!我把卡帕西的课程整理成了一本中文教材!
 
-[neural network: zero to hero中文教材](karpathy\nn_zero_to_hero_textbook.agent.final.md)
+[neural network: zero to hero中文教材](karpathy/nn_zero_to_hero_textbook.agent.final.md)
 
 本教材定位为**配合 Karpathy 视频课程的中文详解教材**。它不是为了替代视频，而是为了在你复习时提供一个结构化的文字参考——当你想要快速回顾某个概念的讲解、查看某段代码的实现、或者寻找课后练习资源时，这份教材应该成为你的首选。
 
