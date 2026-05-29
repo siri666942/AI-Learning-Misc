@@ -1,6 +1,9 @@
 # %%
 import torch
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+DATA_DIR = Path(__file__).resolve().parent
 g=torch.Generator().manual_seed(114514)
 
 # %%
@@ -82,7 +85,7 @@ class BatchNorm1d:
         
 
 # %%
-words=open("names.txt","r").read().splitlines()   
+words=(DATA_DIR / "names.txt").read_text().splitlines()
 
 stoi={s:ord(s)-ord('a')+1 for s in sorted(set(''.join(words)))}
 stoi['.']=0
