@@ -6,6 +6,6 @@ dataset
 prac/store-sales/data/*.csv
 prac/store-sales/data/*.zip
 prac/store-sales/data/*.tar.gz
-*.pt
+**/*.pt
 
 karpathy/songci-nanogpt/poetry_data/*
