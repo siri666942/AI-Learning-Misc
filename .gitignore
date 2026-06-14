@@ -9,3 +9,5 @@ prac/store-sales/data/*.tar.gz
 **/*.pt
 
 karpathy/songci-nanogpt/poetry_data/*
+.gitignore~
+..gitignore.un~
