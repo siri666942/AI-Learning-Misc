@@ -7,6 +7,13 @@
 > [Krajewski et al. (2024)](https://arxiv.org/abs/2402.07871) MoE scaling law、
 > [Zhou et al. (2024)](https://arxiv.org/abs/2404.10102) 多 epoch 过拟合研究。
 
+## 效果展示
+
+[1] 秋日登高望，寒云带远山。客心何处尽，归思几时闲。
+[2] 一别一见春，相看意何如。春风吹桃花，桃李已满渠。我行无定踪，君去无还期。人生各有意，何必长相思。
+[3]一片闲云，半空飞雨，来还去。
+[4] 平日山林兴，闲中日月长。一杯花下酒，万事日边觞。风月虽相似，江湖未易忘。何时重来此，相对对清觞。
+
 ## 核心特性
 
 - **字级分词**: 1 Token = 1 汉字，格律字数绝对精准
@@ -19,7 +26,8 @@
 
 ```
 songci-nanogpt/
-├── char_tokenizer.py       # 字级分词器
+├── char_tokenizer.py   # 字级分词器
+|—— generate.py  # 用训好的模型生成例子
 ├── prepare_poetry_data.py  # 数据流水线 (抽取→清洗→编码→.npy)
 ├── inspect_data.py         # 数据分布检查工具
 ├── train.ipynb             # GPT 模型定义 + 训练循环
