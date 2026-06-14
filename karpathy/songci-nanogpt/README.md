@@ -202,17 +202,27 @@ D:\chinese-poetry/*.json          HuggingFace (古典文/现代文)
 | 参数 | 124M (GPT-2) | **~48M** |
 | 混合精度 | bfloat16 | bfloat16 (TF32 matmul) |
 
-## 配置配比
+## 快速使用
 
-在 `prepare_poetry_data.py` 顶部修改：
+cd karpathy/songci-nanogpt
 
-```python
-RATIO_POEM = 0.65       # 诗词
-RATIO_CLASSICAL = 0.20   # 古典文
-RATIO_MODERN = 0.15      # 现代文（需联网下载 Wikipedia）
-```
+### 默认: 无前缀, 生成 4 首
+python generate.py
 
-三者之和必须 = 1.0。设为 0 则跳过该数据源。
+### 自定义前缀
+python generate.py --prompt "明月几时有"
+
+### 生成 10 首
+python generate.py -n 10
+
+### 组合参数: 前缀 + 数量 + 温度 + top-k
+python generate.py --prompt "大江东去" -n 6 -t 0.7 -k 80
+
+### 固定种子(可复现)
+python generate.py -s 42
+
+### CPU 模式
+python generate.py --device cpu
 
 ## 许可
 
