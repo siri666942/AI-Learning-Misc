@@ -1,4 +1,4 @@
-# AI学习杂记 by Siri
+# deep-learning 学习杂记 by Siri
 
 ## 学习资料整合
 
